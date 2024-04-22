@@ -1,0 +1,56 @@
+[package]
+authors = ["backtrac3r"]
+edition = "2021"
+readme = "README.md"
+name = "imu-test1"
+version = "0.1.0"
+
+[workspace]
+members = ["icm-20948", "common"]
+
+[workspace.dependencies]
+embassy-stm32 = { version = "0.1.0", features = ["defmt", "time-driver-any", "stm32f411re", "memory-x", "unstable-pac", "exti"] }
+embassy-time = { version = "0.3.0", features = ["defmt", "defmt-timestamp-uptime", "tick-hz-32_768"] }
+embassy-sync = "0.5.0"
+embedded-hal-async = "1.0.0"
+common = "0.1.0"
+nalgebra = "0.32.5"
+
+[dependencies]
+# dr-icm-20948 = { path = "./icm-20948" }
+# common = { path = "./common" }
+
+cortex-m = { version = "0.7.7", features = ["critical-section-single-core"] }
+cortex-m-rt = "0.7.4"
+panic-probe = { version = "0.3.1", features = ["print-defmt"] }
+
+defmt = "0.3.6"
+defmt-rtt = "0.4.0"
+
+embassy-stm32.workspace = true
+embassy-time.workspace = true
+embassy-executor = { version = "0.5.0", features = ["nightly", "arch-cortex-m", "executor-thread", "defmt", "integrated-timers"] }
+
+# embedded-io = { version = "*" }
+# embedded-io-async = { version = "*" }
+# futures = { version = "*", default-features = false, features = ["async-await"] }
+# heapless = { version = "*", default-features = false }
+# embedded-storage = "*"
+# micromath = "*"
+# chrono = { version = "*", default-features = false}
+
+[patch.crates-io]
+embassy-stm32 = { git = "https://github.com/embassy-rs/embassy" }
+embassy-executor = { git = "https://github.com/embassy-rs/embassy" }
+embassy-time = { git = "https://github.com/embassy-rs/embassy" }
+
+[[bin]]
+name = "imu-test1"
+test = false
+bench = false
+
+[profile.release]
+codegen-units = 1 # better optimizations
+debug = true # symbols are nice and they don't increase the size on Flash
+lto = true # better optimizations
+

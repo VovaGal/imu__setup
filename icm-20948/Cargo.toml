@@ -1,0 +1,13 @@
+[package]
+name = "dr-icm-20948"
+authors = ["Adil Haidar"]
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+common.workspace = true
+
+embassy-stm32.workspace = true
+embassy-time.workspace = true
+
+nalgebra.workspace = true
