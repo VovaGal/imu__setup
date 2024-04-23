@@ -1,15 +1,13 @@
 #![feature(type_changing_struct_update)]
 #![no_std]
 
-use core::marker::PhantomData;
-
-use embassy_time::{Duration, Timer};
-use nalgebra::Vector3;
+mod reg;
 
 use common::AsI2c as I2c;
-use reg::*;
-
-mod reg;
+use core::marker::PhantomData;
+use embassy_time::{Duration, Timer};
+use nalgebra::Vector3;
+use reg::{Bank0, Bank2, Bank3, MagBank, Register, UserBank, REG_BANK_SEL};
 
 const ICM20948_ADDR: u8 = 0x68;
 const MAGNET_ADDR: u8 = 0x0C;
@@ -53,9 +51,9 @@ pub struct Icm20948<I2C, MAG, INIT> {
 }
 
 impl<I2C, E> Icm20948<I2C, MagDisabled, NotInit>
-    where
-        I2C: I2c<Error=E>,
-        E: Into<IcmError<E>>,
+where
+    I2C: I2c<Error = E>,
+    E: Into<IcmError<E>>,
 {
     /// Creates an uninitialized IMU struct with the given config.
     #[must_use]
@@ -89,49 +87,97 @@ impl<I2C, E> Icm20948<I2C, MagDisabled, NotInit>
     /// Set accelerometer measuring range, choices are 2G, 4G, 8G or 16G
     #[must_use]
     pub fn acc_range(self, acc_range: AccelerometerRange) -> Icm20948<I2C, MagDisabled, NotInit> {
-        Icm20948 { config: Icm20948Config { acc_range, ..self.config }, ..self }
+        Icm20948 {
+            config: Icm20948Config {
+                acc_range,
+                ..self.config
+            },
+            ..self
+        }
     }
 
     /// Set accelerometer digital low-pass filter frequency
     #[must_use]
     pub fn acc_dlp(self, acc_dlp: AccelerometerDlp) -> Icm20948<I2C, MagDisabled, NotInit> {
-        Icm20948 { config: Icm20948Config { acc_dlp, ..self.config }, ..self }
+        Icm20948 {
+            config: Icm20948Config {
+                acc_dlp,
+                ..self.config
+            },
+            ..self
+        }
     }
 
     /// Set returned unit of accelerometer measurement, choices are Gs or m/s^2
     #[must_use]
     pub fn acc_unit(self, acc_unit: AccelerometerUnit) -> Icm20948<I2C, MagDisabled, NotInit> {
-        Icm20948 { config: Icm20948Config { acc_unit, ..self.config }, ..self }
+        Icm20948 {
+            config: Icm20948Config {
+                acc_unit,
+                ..self.config
+            },
+            ..self
+        }
     }
 
     /// Set accelerometer output data rate
     #[must_use]
     pub fn acc_odr(self, acc_odr: u16) -> Icm20948<I2C, MagDisabled, NotInit> {
-        Icm20948 { config: Icm20948Config { acc_odr, ..self.config }, ..self }
+        Icm20948 {
+            config: Icm20948Config {
+                acc_odr,
+                ..self.config
+            },
+            ..self
+        }
     }
 
     /// Set gyroscope measuring range, choices are 250Dps, 500Dps, 1000Dps and 2000Dps
     #[must_use]
     pub fn gyr_range(self, gyr_range: GyroscopeRange) -> Icm20948<I2C, MagDisabled, NotInit> {
-        Icm20948 { config: Icm20948Config { gyr_range, ..self.config }, ..self }
+        Icm20948 {
+            config: Icm20948Config {
+                gyr_range,
+                ..self.config
+            },
+            ..self
+        }
     }
 
     /// Set gyroscope digital low pass filter frequency
     #[must_use]
     pub fn gyr_dlp(self, gyr_dlp: GyroscopeDlp) -> Icm20948<I2C, MagDisabled, NotInit> {
-        Icm20948 { config: Icm20948Config { gyr_dlp, ..self.config }, ..self }
+        Icm20948 {
+            config: Icm20948Config {
+                gyr_dlp,
+                ..self.config
+            },
+            ..self
+        }
     }
 
     /// Set returned unit of gyroscope measurement, choices are degrees/s or radians/s
     #[must_use]
     pub fn gyr_unit(self, gyr_unit: GyroscopeUnit) -> Icm20948<I2C, MagDisabled, NotInit> {
-        Icm20948 { config: Icm20948Config { gyr_unit, ..self.config }, ..self }
+        Icm20948 {
+            config: Icm20948Config {
+                gyr_unit,
+                ..self.config
+            },
+            ..self
+        }
     }
 
     /// Set gyroscope output data rate
     #[must_use]
     pub fn gyr_odr(self, gyr_odr: u8) -> Icm20948<I2C, MagDisabled, NotInit> {
-        Icm20948 { config: Icm20948Config { gyr_odr, ..self.config }, ..self }
+        Icm20948 {
+            config: Icm20948Config {
+                gyr_odr,
+                ..self.config
+            },
+            ..self
+        }
     }
 
     /*
@@ -200,7 +246,6 @@ impl<I2C, E> Icm20948<I2C, MagDisabled, NotInit>
 
     /// Setup magnetometer in continuous mode
     async fn setup_mag(&mut self) -> Result<(), IcmError<E>> {
-
         // Ensure known-good state
         self.mag_reset().await?;
 
@@ -227,7 +272,8 @@ impl<I2C, E> Icm20948<I2C, MagDisabled, NotInit>
         self.mag_write_to(MagBank::Control2.reg(), 0b01000).await?;
 
         // Set slave register to read from
-        self.write_to(Bank3::I2cSlv0Reg, MagBank::XDataLow.reg()).await?;
+        self.write_to(Bank3::I2cSlv0Reg, MagBank::XDataLow.reg())
+            .await?;
 
         // Set expected read size
         self.write_to(Bank3::I2cSlv0Ctrl, 1 << 7 | 8).await?;
@@ -237,9 +283,9 @@ impl<I2C, E> Icm20948<I2C, MagDisabled, NotInit>
 }
 
 impl<I2C, E, MAG, INIT> Icm20948<I2C, MAG, INIT>
-    where
-        I2C: I2c<Error=E>,
-        E: Into<IcmError<E>>,
+where
+    I2C: I2c<Error = E>,
+    E: Into<IcmError<E>>,
 {
     /// Reset accelerometer / gyroscope module
     pub async fn device_reset(&mut self) -> Result<(), E> {
@@ -251,7 +297,8 @@ impl<I2C, E, MAG, INIT> Icm20948<I2C, MAG, INIT>
 
     /// Enables main ICM module to act as I2C master (eg. for magnetometer)
     async fn enable_i2c_master(&mut self, enable: bool) -> Result<(), E> {
-        self.write_to_flag(Bank0::UserCtrl, u8::from(enable) << 5, 1 << 5).await
+        self.write_to_flag(Bank0::UserCtrl, u8::from(enable) << 5, 1 << 5)
+            .await
     }
 
     /// Resets I2C master module
@@ -262,17 +309,24 @@ impl<I2C, E, MAG, INIT> Icm20948<I2C, MAG, INIT>
     /// Ensure correct user bank for given register
     async fn set_user_bank<R: Register + Copy>(&mut self, bank: &R, force: bool) -> Result<(), E> {
         if (self.user_bank != bank.bank()) || force {
-            self.i2c.write(self.addr, &[REG_BANK_SEL, (bank.bank() as u8) << 4]).await?;
+            self.i2c
+                .write(self.addr, &[REG_BANK_SEL, (bank.bank() as u8) << 4])
+                .await?;
             self.user_bank = bank.bank();
         }
         Ok(())
     }
 
     /// Read a const number `N` of bytes from the requested register
-    async fn read_from<const N: usize, R: Register + Copy>(&mut self, cmd: R) -> Result<[u8; N], E> {
+    async fn read_from<const N: usize, R: Register + Copy>(
+        &mut self,
+        cmd: R,
+    ) -> Result<[u8; N], E> {
         let mut buf = [0u8; N];
         self.set_user_bank(&cmd, false).await?;
-        self.i2c.write_read(self.addr, &[cmd.reg()], &mut buf).await?;
+        self.i2c
+            .write_read(self.addr, &[cmd.reg()], &mut buf)
+            .await?;
         Ok(buf)
     }
 
@@ -284,8 +338,8 @@ impl<I2C, E, MAG, INIT> Icm20948<I2C, MAG, INIT>
 
     /// Write to a register, but only overwrite the parts corresponding to the flag byte
     async fn write_to_flag<R>(&mut self, cmd: R, data: u8, flag: u8) -> Result<(), E>
-        where
-            R: Register + Copy + Clone,
+    where
+        R: Register + Copy + Clone,
     {
         let [mut register] = self.read_from(cmd).await?;
         register = (register & !flag) | (data & flag);
@@ -319,6 +373,7 @@ impl<I2C, E, MAG, INIT> Icm20948<I2C, MAG, INIT>
     }
 
     /// Read a `N` bytes from the magnetometer in `reg` (20 ms non-blocking delays)
+    #[allow(clippy::cast_possible_truncation)]
     async fn mag_read_from<const N: usize>(&mut self, reg: MagBank) -> Result<[u8; N], E> {
         self.set_mag_read().await?;
         Timer::after_millis(10).await;
@@ -367,18 +422,22 @@ impl<I2C, E, MAG, INIT> Icm20948<I2C, MAG, INIT>
     /// Set (or disable) accelerometer digital low-pass filter
     pub async fn set_acc_dlp(&mut self, acc_dlp: AccelerometerDlp) -> Result<(), E> {
         if AccelerometerDlp::Disabled == acc_dlp {
-            self.write_to_flag(Bank2::AccelConfig, 0u8, 0b0011_1001).await
+            self.write_to_flag(Bank2::AccelConfig, 0u8, 0b0011_1001)
+                .await
         } else {
-            self.write_to_flag(Bank2::AccelConfig, (acc_dlp as u8) << 3 | 1, 0b0011_1001).await
+            self.write_to_flag(Bank2::AccelConfig, (acc_dlp as u8) << 3 | 1, 0b0011_1001)
+                .await
         }
     }
 
     /// Set (or disable) gyroscope digital low-pass filter
     pub async fn set_gyr_dlp(&mut self, gyr_dlp: GyroscopeDlp) -> Result<(), E> {
         if GyroscopeDlp::Disabled == gyr_dlp {
-            self.write_to_flag(Bank2::GyroConfig1, 0u8, 0b0011_1001).await
+            self.write_to_flag(Bank2::GyroConfig1, 0u8, 0b0011_1001)
+                .await
         } else {
-            self.write_to_flag(Bank2::GyroConfig1, (gyr_dlp as u8) << 3 | 1, 0b0011_1001).await
+            self.write_to_flag(Bank2::GyroConfig1, (gyr_dlp as u8) << 3 | 1, 0b0011_1001)
+                .await
         }
     }
 
@@ -396,9 +455,9 @@ impl<I2C, E, MAG, INIT> Icm20948<I2C, MAG, INIT>
 }
 
 impl<I2C, E> Icm20948<I2C, MagEnabled, Init>
-    where
-        I2C: I2c<Error=E>,
-        E: Into<IcmError<E>>,
+where
+    I2C: I2c<Error = E>,
+    E: Into<IcmError<E>>,
 {
     /// Apply the saved calibration offset+scale to measurement vector
     fn apply_mag_calibration(&self, mag: &mut Vector3<f32>) {
@@ -424,9 +483,9 @@ impl<I2C, E> Icm20948<I2C, MagEnabled, Init>
     }
 
     /// Get vector of scaled magnetometer values
+    #[allow(clippy::cast_lossless)]
     pub async fn read_mag(&mut self) -> Result<Vector3<f32>, E> {
-        let mut mag = self.read_mag_unscaled().await?
-            .map(|x| (x as f32)).into();
+        let mut mag = self.read_mag_unscaled().await?.map(|x| (x as f32)).into();
         self.apply_mag_calibration(&mut mag);
 
         Ok(mag)
@@ -441,36 +500,37 @@ impl<I2C, E> Icm20948<I2C, MagEnabled, Init>
     }
 
     /// Get scaled measurement for accelerometer, gyroscope and magnetometer, and temperature
+    #[allow(clippy::similar_names)]
     pub async fn read_all(&mut self) -> Result<Data9Dof, E> {
         let raw: [u8; 20] = self.read_from(Bank0::AccelXoutH).await?;
-        let [axh, axl, ayh, ayl, azh, azl,
-        gxh, gxl, gyh, gyl, gzh, gzl,
-        tph, tpl, mxl, mxh, myl, myh, mzl, mzh] = raw;
+        let [axh, axl, ayh, ayl, azh, azl, gxh, gxl, gyh, gyl, gzh, gzl, tph, tpl, mxl, mxh, myl, myh, mzl, mzh]: [u8; 20] =
+            raw;
 
         let acc = self.scaled_acc_from_bytes([axh, axl, ayh, ayl, azh, azl]);
         let gyr = self.scaled_gyr_from_bytes([gxh, gxl, gyh, gyl, gzh, gzl]);
         let mag = self.scaled_mag_from_bytes([mxl, mxh, myl, myh, mzl, mzh]);
 
-        let tmp = self.scaled_tmp_from_bytes([tph, tpl]);
+        let tmp = scaled_tmp_from_bytes([tph, tpl]);
 
         Ok(Data9Dof { acc, gyr, mag, tmp })
     }
 
     /// Takes 6 bytes converts them into a Vector3 of floats
+    #[allow(clippy::cast_lossless)]
     fn scaled_mag_from_bytes(&self, bytes: [u8; 6]) -> Vector3<f32> {
-        let mut mag = collect_3xi16_mag(bytes)
-            .map(|x| (x as f32)).into();
+        let mut mag = collect_3xi16_mag(bytes).map(|x| (x as f32)).into();
         self.apply_mag_calibration(&mut mag);
         mag
     }
 }
 
 impl<I2C, E> Icm20948<I2C, MagDisabled, Init>
-    where
-        I2C: I2c<Error=E>,
-        E: Into<IcmError<E>>,
+where
+    I2C: I2c<Error = E>,
+    E: Into<IcmError<E>>,
 {
     /// Get scaled measurements for accelerometer and gyroscope, and temperature
+    #[allow(clippy::similar_names)]
     pub async fn read_all(&mut self) -> Result<Data6Dof, E> {
         let raw: [u8; 14] = self.read_from(Bank0::AccelXoutH).await?;
         let [axh, axl, ayh, ayl, azh, azl, gxh, gxl, gyh, gyl, gzh, gzl, tph, tpl] = raw;
@@ -478,16 +538,16 @@ impl<I2C, E> Icm20948<I2C, MagDisabled, Init>
         let acc = self.scaled_acc_from_bytes([axh, axl, ayh, ayl, azh, azl]);
         let gyr = self.scaled_gyr_from_bytes([gxh, gxl, gyh, gyl, gzh, gzl]);
 
-        let tmp = self.scaled_tmp_from_bytes([tph, tpl]);
+        let tmp = scaled_tmp_from_bytes([tph, tpl]);
 
         Ok(Data6Dof { acc, gyr, tmp })
     }
 }
 
 impl<I2C, E, MAG> Icm20948<I2C, MAG, Init>
-    where
-        I2C: I2c<Error=E>,
-        E: Into<IcmError<E>>,
+where
+    I2C: I2c<Error = E>,
+    E: Into<IcmError<E>>,
 {
     /// Takes 6 bytes converts them into a Vector3 of floats
     fn scaled_acc_from_bytes(&self, bytes: [u8; 6]) -> Vector3<f32> {
@@ -499,11 +559,6 @@ impl<I2C, E, MAG> Icm20948<I2C, MAG, Init>
     fn scaled_gyr_from_bytes(&self, bytes: [u8; 6]) -> Vector3<f32> {
         let gyr = collect_3xi16(bytes).map(|x| f32::from(x) * self.gyr_scalar());
         Vector3::from(gyr)
-    }
-
-    /// Takes 2 bytes converts them into a temperature as a float
-    fn scaled_tmp_from_bytes(&self, bytes: [u8; 2]) -> f32 {
-        f32::from(i16::from_be_bytes(bytes)) / 333.87 + 21.
     }
 
     /// Get array of unscaled accelerometer values
@@ -537,34 +592,41 @@ impl<I2C, E, MAG> Icm20948<I2C, MAG, Init>
     }
 
     /// Collects and averages `num` samples for gyro calibration and saves them on-chip
+    #[allow(clippy::cast_lossless)]
     pub async fn gyr_calibrate(&mut self, num: usize) -> Result<(), E> {
         let mut offset: Vector3<i32> = Vector3::default();
         for _ in 0..num {
-            offset += self.read_gyr_unscaled().await?.map(|x| {
-                x as i32
-            });
+            offset += self.read_gyr_unscaled().await?.map(|x| x as i32);
             Timer::after(Duration::from_hz(100)).await;
         }
 
-        self.set_gyr_offsets(offset.map(|x| { x / num as i32 } as i16)).await
+        self.set_gyr_offsets(offset.map(|x| { x / num as i32 } as i16))
+            .await
     }
 
     /// Set gyroscope calibration offsets by writing them to the IMU
     async fn set_gyr_offsets(&mut self, offsets: Vector3<i16>) -> Result<(), E> {
-        let [[xh, xl], [yh, yl], [zh, zl]]: [[u8; 2]; 3] = offsets.map(|x| {
-            (-x).to_be_bytes()
-        }).into();
+        let [[xh, xl], [yh, yl], [zh, zl]]: [[u8; 2]; 3] =
+            offsets.map(|x| (-x).to_be_bytes()).into();
 
         self.set_user_bank(&Bank2::XgOffsUsrh, false).await?;
-        self.i2c.write(self.addr, &[Bank2::XgOffsUsrh.reg(), xh, xl]).await?;
-        self.i2c.write(self.addr, &[Bank2::YgOffsUsrh.reg(), yh, yl]).await?;
-        self.i2c.write(self.addr, &[Bank2::ZgOffsUsrh.reg(), zh, zl]).await
+        self.i2c
+            .write(self.addr, &[Bank2::XgOffsUsrh.reg(), xh, xl])
+            .await?;
+        self.i2c
+            .write(self.addr, &[Bank2::YgOffsUsrh.reg(), yh, yl])
+            .await?;
+        self.i2c
+            .write(self.addr, &[Bank2::ZgOffsUsrh.reg(), zh, zl])
+            .await
     }
 
     pub async fn new_data_ready(&mut self) -> u8 {
         if let Ok([byte]) = self.read_from(Bank0::DataRdyStatus).await {
             byte
-        } else { 0 }
+        } else {
+            0
+        }
     }
 
     /// Returns the scalar corresponding to the unit and range configured
@@ -733,4 +795,9 @@ impl<E> From<E> for IcmError<E> {
     fn from(error: E) -> Self {
         IcmError::BusError(error)
     }
+}
+
+/// Takes 2 bytes converts them into a temperature as a float
+fn scaled_tmp_from_bytes(bytes: [u8; 2]) -> f32 {
+    f32::from(i16::from_be_bytes(bytes)) / 333.87 + 21.
 }

@@ -2,9 +2,9 @@
 
 use core::fmt::Debug;
 use core::marker::PhantomData;
-
 use embassy_stm32::i2c::Error;
-use embassy_stm32::usart::{BasicInstance, RxDma, TxDma, Uart};
+use embassy_stm32::mode::Async;
+use embassy_stm32::usart::{BasicInstance, Uart};
 use embassy_sync::blocking_mutex::raw::RawMutex;
 use embassy_sync::mutex::Mutex;
 pub use embedded_hal;
@@ -13,33 +13,33 @@ pub use embedded_hal_async::spi::SpiDevice as AsSpi;
 pub use legacy_hal::blocking::spi::Transfer;
 pub use legacy_hal::digital::v2::OutputPin as LegacyOutputPin;
 
-// use embedded_hal::serial::ErrorKind;
-
-// use embedded_hal_async::serial;
-
-pub struct SerialAsync<'a, M: RawMutex, I, TX, RX>
-    where I: BasicInstance, TX: TxDma<I>, RX: RxDma<I> {
-    bus: &'a Mutex<M, Uart<'a, I, TX, RX>>,
+pub struct SerialAsync<'a, M: RawMutex, I>
+where
+    I: BasicInstance,
+{
+    bus: &'a Mutex<M, Uart<'a, I, Async>>,
 }
 
-impl<'a, M: RawMutex, I, TX, RX> SerialAsync<'a, M, I, TX, RX>
-    where
-        M: RawMutex + 'static,
-        I: BasicInstance + 'static, TX: TxDma<I>, RX: RxDma<I>
+impl<'a, M: RawMutex, I> SerialAsync<'a, M, I>
+where
+    M: RawMutex + 'static,
+    I: BasicInstance + 'static,
 {
-    pub fn new(bus: &'a Mutex<M, Uart<'a, I, TX, RX>>) -> Self {
+    pub fn new(bus: &'a Mutex<M, Uart<'a, I, Async>>) -> Self {
         Self { bus }
     }
 
+    #[allow(clippy::missing_panics_doc)]
     pub async fn write(&mut self, words: &[u8]) {
         let mut bus = self.bus.lock().await;
+
         bus.write(words).await.map_err(SerialError::Serial).unwrap();
     }
 }
 
 #[derive(Debug)]
 pub enum SerialError<BUS> {
-    Serial(BUS)
+    Serial(BUS),
 }
 
 // impl<BUS> serial::Error for SerialError<BUS>
@@ -53,7 +53,10 @@ pub enum SerialError<BUS> {
 // }
 
 pub struct TwinG<K1, K2, S1: AsSpi, S2: AsSpi>
-    where K1: SPIDevice<S1>, K2: SPIDevice<S2> {
+where
+    K1: SPIDevice<S1>,
+    K2: SPIDevice<S2>,
+{
     pub s1: K1,
     pub s2: K2,
     i1: PhantomData<S1>,
@@ -61,8 +64,10 @@ pub struct TwinG<K1, K2, S1: AsSpi, S2: AsSpi>
 }
 
 impl<S1: AsSpi, S2: AsSpi, K1, K2> TwinG<K1, K2, S1, S2>
-    where
-        K1: SPIDevice<S1>, K2: SPIDevice<S2> {
+where
+    K1: SPIDevice<S1>,
+    K2: SPIDevice<S2>,
+{
     pub fn new(g1: S1, g2: S2) -> TwinG<K1, K2, S1, S2> {
         Self {
             s1: K1::new_with_interface(g1),

@@ -8,7 +8,6 @@ pub trait WReg {
     fn addr(&self) -> u8;
 }
 
-
 #[repr(u8)]
 #[derive(PartialEq, Copy, Clone)]
 pub enum UserBank {
