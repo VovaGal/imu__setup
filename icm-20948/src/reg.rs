@@ -1,10 +1,10 @@
 pub const REG_BANK_SEL: u8 = 0x7F;
 
-pub trait RReg {
+pub trait Read {
     fn addr(&self) -> u8;
 }
 
-pub trait WReg {
+pub trait Write {
     fn addr(&self) -> u8;
 }
 

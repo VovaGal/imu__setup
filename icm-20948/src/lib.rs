@@ -593,6 +593,8 @@ where
 
     /// Collects and averages `num` samples for gyro calibration and saves them on-chip
     #[allow(clippy::cast_lossless)]
+    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_possible_wrap)]
     pub async fn gyr_calibrate(&mut self, num: usize) -> Result<(), E> {
         let mut offset: Vector3<i32> = Vector3::default();
         for _ in 0..num {
@@ -696,6 +698,7 @@ pub enum AccelerometerRange {
 }
 
 impl AccelerometerRange {
+    #[must_use]
     pub fn divisor(self) -> f32 {
         match self {
             Self::Gs2 => 16384.0,
@@ -715,6 +718,7 @@ pub enum GyroscopeRange {
 }
 
 impl GyroscopeRange {
+    #[must_use]
     pub fn divisor(self) -> f32 {
         match self {
             Self::Dps250 => 131.0,
@@ -734,6 +738,7 @@ pub enum AccelerometerUnit {
 }
 
 impl AccelerometerUnit {
+    #[must_use]
     pub fn scalar(self) -> f32 {
         match self {
             Self::MpSs => 9.82,
@@ -751,9 +756,10 @@ pub enum GyroscopeUnit {
 }
 
 impl GyroscopeUnit {
+    #[must_use]
     pub fn scalar(self) -> f32 {
         match self {
-            Self::Rps => 0.017453293,
+            Self::Rps => 0.017_453_293,
             Self::Dps => 1.0,
         }
     }
