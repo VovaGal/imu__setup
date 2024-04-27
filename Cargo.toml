@@ -5,8 +5,8 @@ readme = "README.md"
 name = "imu-test1"
 version = "0.1.0"
 
-# [workspace]
-# members = ["common"]
+[workspace]
+members = ["common"]
 
 [workspace.dependencies]
 embassy-stm32 = { version = "0.1.0", features = ["defmt", "time-driver-any", "stm32f411re", "memory-x", "unstable-pac", "exti"] }
