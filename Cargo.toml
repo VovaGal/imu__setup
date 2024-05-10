@@ -17,6 +17,14 @@ common = { path = "./common" }
 nalgebra = { version = "0.32.5", default-features = false }
 
 [dependencies]
+nalgebra = { version = "0.32.5", default-features = false, features = ["libm"] }
+num-traits = { version = "0.2.19", default-features = false }
+
+# kalman = { path = "./kalman" }
+# kalman_no_std = { path = "./Filters-embedded/kalman_no_std" }
+# nalgebra-rand-mvn = {git="https://github.com/strawlab/nalgebra-rand-mvn", rev="40dd19c5967b24389452aa8c540f643b10fe4e34"}
+
+# imu driver
 dr-icm-20948 = { path = "./icm-20948" }
 
 cortex-m = { version = "0.7.7", features = ["critical-section-single-core"] }
@@ -29,6 +37,8 @@ defmt-rtt = "0.4.0"
 embassy-stm32.workspace = true
 embassy-time.workspace = true
 embassy-executor = { version = "0.5.0", features = ["nightly", "arch-cortex-m", "executor-thread", "defmt", "integrated-timers"] }
+
+# adskalman = { version = "0.15.1", default-features = false }
 
 # embedded-io = { version = "*" }
 # embedded-io-async = { version = "*" }

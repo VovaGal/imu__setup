@@ -1,15 +1,24 @@
-#![no_std]
+// #![no_std]
+#![cfg_attr(not(test), no_std)]
 #![no_main]
 #![feature(impl_trait_in_assoc_type)]
 
-use defmt::{dbg, println};
-use dr_icm_20948::{Init, MagDisabled};
+// mod kalman;
+// mod ahrs;
+mod madgwick;
+
+use crate::madgwick::Ahrs;
+use core::f32::consts::PI;
+use defmt::println;
+use dr_icm_20948::{Init, MagEnabled};
 use embassy_stm32::{
     bind_interrupts,
     i2c::I2c,
     mode::Async,
     peripherals::{self, I2C1},
 };
+use nalgebra::Vector3;
+
 use {
     defmt::unwrap,
     defmt_rtt as _,
@@ -28,7 +37,6 @@ bind_interrupts!(struct Irqs {
 async fn main(spawner: Spawner) {
     let p = embassy_stm32::init(Config::default());
 
-    println!("0");
     let i2c = embassy_stm32::i2c::I2c::new(
         p.I2C1,
         p.PB8,
@@ -36,31 +44,43 @@ async fn main(spawner: Spawner) {
         Irqs,
         p.DMA1_CH6,
         p.DMA1_CH0,
-        hz(1000),
+        hz(3000),
         i2c::Config::default(),
     );
-
     let imu = Icm20948::new(i2c);
-    println!("1");
-    let imu = imu.initialize_6dof().await.unwrap();
-    println!("2");
+    let imu = imu.initialize_9dof().await.unwrap();
 
-    unwrap!(spawner.spawn(driver(imu)));
+    let filter = madgwick::Filter::default();
+
+    unwrap!(spawner.spawn(driver(imu, filter)));
 }
 
 #[embassy_executor::task]
-async fn driver(mut imu: Icm20948<I2c<'static, I2C1, Async>, MagDisabled, Init>) {
+async fn driver(
+    mut imu: Icm20948<I2c<'static, I2C1, Async>, MagEnabled, Init>,
+    mut filter: madgwick::Filter<f32>,
+) {
     loop {
         let data = imu.read_all().await.unwrap();
 
-        println!(
-            "gyr_x: {}\tgyr_y: {}\tgyr_z: {}",
-            data.gyr.x, data.gyr.y, data.gyr.z
-        );
-        println!(
-            "acc_x: {}\tacc_y: {}\tacc_z: {}",
-            data.acc.x, data.acc.y, data.acc.z
-        );
-        println!("");
+        let gyroscope = Vector3::new(data.gyr.x, data.gyr.y, data.gyr.z);
+        let accelerometer = Vector3::new(data.acc.x, data.acc.y, data.acc.z);
+        let magnetometer = Vector3::new(data.mag.x, data.mag.y, data.mag.z);
+
+        let g = gyroscope * (PI / 180.0);
+        let quat = filter.update(&g, &accelerometer, &magnetometer).unwrap();
+        let (roll, pitch, yaw) = quat.euler_angles();
+
+        // Do something with the updated state quaternion
+        println!("{} {} {}", pitch, roll, yaw);
+
+        // println!(
+        //     "gyr_x: {}\tgyr_y: {}\tgyr_z: {}",
+        //     data.gyr.x, data.gyr.y, data.gyr.z
+        // );
+        // println!(
+        //     "acc_x: {}\tacc_y: {}\tacc_z: {}",
+        //     data.acc.x, data.acc.y, data.acc.z
+        // );
     }
 }

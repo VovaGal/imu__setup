@@ -36,7 +36,6 @@ pub struct MagEnabled {
 }
 
 pub struct MagDisabled;
-
 pub struct Init;
 
 pub struct NotInit;
