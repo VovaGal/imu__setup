@@ -107,9 +107,14 @@ impl Default for Filter<f32> {
     /// ```
     fn default() -> Filter<f32> {
         Self {
-            sample_period: (1.0f32) / (256.0),
-            beta: 0.1f32,
-            quat: UnitQuaternion::new_unchecked(Quaternion::new(1.0f32, 0.0, 0.0, 0.0)),
+            sample_period: (1.0) / (256.0),
+            beta: 0.1,
+            quat: UnitQuaternion::new_unchecked(Quaternion::new(
+                nalgebra::one(),
+                nalgebra::zero(),
+                nalgebra::zero(),
+                nalgebra::zero(),
+            )),
         }
     }
 }
@@ -126,10 +131,10 @@ impl<T: Scalar + SimdValue + num_traits::One + num_traits::Zero + Copy> Filter<T
             sample_period,
             beta,
             UnitQuaternion::new_unchecked(Quaternion::new(
-                T::one(),
-                T::zero(),
-                T::zero(),
-                T::zero(),
+                nalgebra::one(),
+                nalgebra::zero(),
+                nalgebra::zero(),
+                nalgebra::zero(),
             )),
         )
     }

@@ -44,13 +44,14 @@ async fn main(spawner: Spawner) {
         Irqs,
         p.DMA1_CH6,
         p.DMA1_CH0,
-        hz(3000),
+        hz(5000),
         i2c::Config::default(),
     );
     let imu = Icm20948::new(i2c);
     let imu = imu.initialize_9dof().await.unwrap();
 
-    let filter = madgwick::Filter::default();
+    let sample_period = (1.0) / (256.0);
+    let filter = madgwick::Filter::new(sample_period, 1.0);
 
     unwrap!(spawner.spawn(driver(imu, filter)));
 }
@@ -65,22 +66,13 @@ async fn driver(
 
         let gyroscope = Vector3::new(data.gyr.x, data.gyr.y, data.gyr.z);
         let accelerometer = Vector3::new(data.acc.x, data.acc.y, data.acc.z);
+        // добавить фильтр шума от магнитного поля моторов
         let magnetometer = Vector3::new(data.mag.x, data.mag.y, data.mag.z);
 
         let g = gyroscope * (PI / 180.0);
         let quat = filter.update(&g, &accelerometer, &magnetometer).unwrap();
         let (roll, pitch, yaw) = quat.euler_angles();
 
-        // Do something with the updated state quaternion
         println!("{} {} {}", pitch, roll, yaw);
-
-        // println!(
-        //     "gyr_x: {}\tgyr_y: {}\tgyr_z: {}",
-        //     data.gyr.x, data.gyr.y, data.gyr.z
-        // );
-        // println!(
-        //     "acc_x: {}\tacc_y: {}\tacc_z: {}",
-        //     data.acc.x, data.acc.y, data.acc.z
-        // );
     }
 }
