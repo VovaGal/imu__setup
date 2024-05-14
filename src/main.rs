@@ -5,9 +5,10 @@
 
 // mod kalman;
 // mod ahrs;
+mod ahrs;
 mod madgwick;
 
-use crate::madgwick::Ahrs;
+use crate::ahrs::Ahrs;
 use core::f32::consts::PI;
 use defmt::println;
 use dr_icm_20948::{Init, MagEnabled};
@@ -18,7 +19,6 @@ use embassy_stm32::{
     peripherals::{self, I2C1},
 };
 use nalgebra::Vector3;
-
 use {
     defmt::unwrap,
     defmt_rtt as _,

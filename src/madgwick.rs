@@ -7,31 +7,7 @@ use nalgebra::{
     Vector2, Vector3, Vector4, Vector6,
 };
 
-/// Trait for implementing an AHRS filter.
-pub trait Ahrs<T: Scalar + SimdValue> {
-    /// Attempts to update the current state quaternion using 9dof IMU values, made up by `gyroscope`,
-    /// `accelerometer`, and `magnetometer`.
-    ///
-    /// Returns a reference to the updated quaternion on success, or in the case of failure, an
-    /// `Err(&str)` containing the reason.
-    fn update(
-        &mut self,
-        gyroscope: &Vector3<T>,
-        accelerometer: &Vector3<T>,
-        magnetometer: &Vector3<T>,
-    ) -> Result<&UnitQuaternion<T>, &str>;
-
-    /// Attempts to update the current state quaternion using 6dof IMU values, made up by `gyroscope` &
-    /// `accelerometer`.
-    ///
-    /// Returns a reference to the updated quaternion on success, or in the case of failure, an
-    /// `Err(&str)` containing the reason.
-    fn update_imu(
-        &mut self,
-        gyroscope: &Vector3<T>,
-        accelerometer: &Vector3<T>,
-    ) -> Result<&UnitQuaternion<T>, &str>;
-}
+use crate::ahrs::Ahrs;
 
 /// Madgwick AHRS implementation.
 ///
@@ -69,23 +45,6 @@ impl<T: SimdRealField + hash::Hash + Copy> hash::Hash for Filter<T> {
         self.sample_period.hash(state);
         self.beta.hash(state);
         self.quat.hash(state);
-    }
-}
-
-impl<T: Scalar + Copy + SimdValue> Copy for Filter<T> {}
-
-impl<T: Scalar + SimdValue + Copy> Clone for Filter<T> {
-    #[inline]
-    fn clone(&self) -> Self {
-        let sample_period = self.sample_period;
-        let beta = self.beta;
-        let quat = self.quat;
-
-        Self {
-            sample_period,
-            beta,
-            quat,
-        }
     }
 }
 
@@ -170,17 +129,13 @@ impl<T: RealField + Copy> Ahrs<T> for Filter<T> {
         let half: T = nalgebra::convert(0.5);
 
         // Normalize accelerometer measurement
-        let accel = match accelerometer.try_normalize(zero) {
-            Some(n) => n,
-            None => return Err("Accelerometer norm divided by zero."),
+        let Some(accel) = accelerometer.try_normalize(zero) else {
+            return Err("Accelerometer norm divided by zero.");
         };
 
         // Normalize magnetometer measurement
-        let mag = match magnetometer.try_normalize(zero) {
-            Some(n) => n,
-            None => {
-                return Err("Magnetometer norm divided by zero.");
-            }
+        let Some(mag) = magnetometer.try_normalize(zero) else {
+            return Err("Magnetometer norm divided by zero.");
         };
 
         // Reference direction of Earth's magnetic field (Quaternion should still be conj of q)
@@ -188,24 +143,57 @@ impl<T: RealField + Copy> Ahrs<T> for Filter<T> {
         let b = Quaternion::new(zero, Vector2::new(h[0], h[1]).norm(), zero, h[2]);
 
         // Gradient descent algorithm corrective step
-        #[rustfmt::skip]
         let F = Vector6::new(
-            two*(       q[0]*q[2] - q[3]*q[1]) - accel[0],
-            two*(       q[3]*q[0] + q[1]*q[2]) - accel[1],
-            two*(half - q[0]*q[0] - q[1]*q[1]) - accel[2],
-            two*b[0]*(half - q[1]*q[1] - q[2]*q[2]) + two*b[2]*(q[0]*q[2] - q[3]*q[1]) - mag[0],
-            two*b[0]*(q[0]*q[1] - q[3]*q[2])        + two*b[2]*(       q[3]*q[0] + q[1]*q[2]) - mag[1],
-            two*b[0]*(q[3]*q[1] + q[0]*q[2])        + two*b[2]*(half - q[0]*q[0] - q[1]*q[1]) - mag[2]
+            two * (q[0] * q[2] - q[3] * q[1]) - accel[0],
+            two * (q[3] * q[0] + q[1] * q[2]) - accel[1],
+            two * (half - q[0] * q[0] - q[1] * q[1]) - accel[2],
+            two * b[0] * (half - q[1] * q[1] - q[2] * q[2])
+                + two * b[2] * (q[0] * q[2] - q[3] * q[1])
+                - mag[0],
+            two * b[0] * (q[0] * q[1] - q[3] * q[2]) + two * b[2] * (q[3] * q[0] + q[1] * q[2])
+                - mag[1],
+            two * b[0] * (q[3] * q[1] + q[0] * q[2])
+                + two * b[2] * (half - q[0] * q[0] - q[1] * q[1])
+                - mag[2],
         );
 
-        #[rustfmt::skip]
         let J_t = Matrix6::new(
-            -two*q[1], two*q[0],       zero,                -two*b[2]*q[1], -two*b[0]*q[2]+two*b[2]*q[0], two*b[0]*q[1],
-             two*q[2], two*q[3], -four*q[0],                 two*b[2]*q[2],  two*b[0]*q[1]+two*b[2]*q[3], two*b[0]*q[2]-four*b[2]*q[0],
-            -two*q[3], two*q[2], -four*q[1], -four*b[0]*q[1]-two*b[2]*q[3],  two*b[0]*q[0]+two*b[2]*q[2], two*b[0]*q[3]-four*b[2]*q[1],
-             two*q[0], two*q[1],       zero, -four*b[0]*q[2]+two*b[2]*q[0], -two*b[0]*q[3]+two*b[2]*q[1], two*b[0]*q[0],
-             zero, zero, zero, zero, zero, zero,
-             zero, zero, zero, zero, zero, zero
+            -two * q[1],
+            two * q[0],
+            zero,
+            -two * b[2] * q[1],
+            -two * b[0] * q[2] + two * b[2] * q[0],
+            two * b[0] * q[1],
+            two * q[2],
+            two * q[3],
+            -four * q[0],
+            two * b[2] * q[2],
+            two * b[0] * q[1] + two * b[2] * q[3],
+            two * b[0] * q[2] - four * b[2] * q[0],
+            -two * q[3],
+            two * q[2],
+            -four * q[1],
+            -four * b[0] * q[1] - two * b[2] * q[3],
+            two * b[0] * q[0] + two * b[2] * q[2],
+            two * b[0] * q[3] - four * b[2] * q[1],
+            two * q[0],
+            two * q[1],
+            zero,
+            -four * b[0] * q[2] + two * b[2] * q[0],
+            -two * b[0] * q[3] + two * b[2] * q[1],
+            two * b[0] * q[0],
+            zero,
+            zero,
+            zero,
+            zero,
+            zero,
+            zero,
+            zero,
+            zero,
+            zero,
+            zero,
+            zero,
+            zero,
         );
 
         let step = (J_t * F).normalize();
@@ -233,28 +221,35 @@ impl<T: RealField + Copy> Ahrs<T> for Filter<T> {
         let half: T = nalgebra::convert(0.5);
 
         // Tormalize accelerometer measurement
-        let accel = match accelerometer.try_normalize(zero) {
-            Some(n) => n,
-            None => {
-                return Err("Accelerator norm divided by zero.");
-            }
+        let Some(accel) = accelerometer.try_normalize(zero) else {
+            return Err("Accelerator norm divided by zero.");
         };
 
         // Gradient descent algorithm corrective step
-        #[rustfmt::skip]
         let F = Vector4::new(
-            two*(       q[0]*q[2] - q[3]*q[1]) - accel[0],
-            two*(       q[3]*q[0] + q[1]*q[2]) - accel[1],
-            two*(half - q[0]*q[0] - q[1]*q[1]) - accel[2],
-            zero
+            two * (q[0] * q[2] - q[3] * q[1]) - accel[0],
+            two * (q[3] * q[0] + q[1] * q[2]) - accel[1],
+            two * (half - q[0] * q[0] - q[1] * q[1]) - accel[2],
+            zero,
         );
 
-        #[rustfmt::skip]
         let J_t = Matrix4::new(
-            -two*q[1], two*q[0],       zero, zero,
-             two*q[2], two*q[3], -four*q[0], zero,
-            -two*q[3], two*q[2], -four*q[1], zero,
-             two*q[0], two*q[1],       zero, zero
+            -two * q[1],
+            two * q[0],
+            zero,
+            zero,
+            two * q[2],
+            two * q[3],
+            -four * q[0],
+            zero,
+            -two * q[3],
+            two * q[2],
+            -four * q[1],
+            zero,
+            two * q[0],
+            two * q[1],
+            zero,
+            zero,
         );
 
         let step = (J_t * F).normalize();
