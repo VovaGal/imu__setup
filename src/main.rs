@@ -9,7 +9,7 @@ mod ahrs;
 mod madgwick;
 
 use crate::ahrs::Ahrs;
-use core::f32::consts::PI;
+use core::f64::consts::PI;
 use defmt::println;
 use dr_icm_20948::{Init, MagEnabled};
 use embassy_stm32::{
@@ -44,14 +44,24 @@ async fn main(spawner: Spawner) {
         Irqs,
         p.DMA1_CH6,
         p.DMA1_CH0,
-        hz(5000),
+        hz(3000),
         i2c::Config::default(),
     );
     let imu = Icm20948::new(i2c);
-    let imu = imu.initialize_9dof().await.unwrap();
+    let mut imu = imu.initialize_9dof().await.unwrap();
+    imu.set_gyr_odr(0).await.unwrap();
+    imu.set_acc_odr(0).await.unwrap();
+    // imu.gyr_calibrate(100).await.unwrap();
+    // imu.set_acc_dlp(dr_icm_20948::AccelerometerDlp::Hz6)
+    //     .await
+    //     .unwrap();
 
-    let sample_period = (1.0) / (256.0);
-    let filter = madgwick::Filter::new(sample_period, 1.0);
+    // imu.set_gyr_dlp(dr_icm_20948::GyroscopeDlp::Hz6)
+    //     .await
+    //     .unwrap();
+
+    let sample_period = (1.0) / (12.0);
+    let filter = madgwick::Madgwick::new(sample_period, 0.1);
 
     unwrap!(spawner.spawn(driver(imu, filter)));
 }
@@ -59,20 +69,62 @@ async fn main(spawner: Spawner) {
 #[embassy_executor::task]
 async fn driver(
     mut imu: Icm20948<I2c<'static, I2C1, Async>, MagEnabled, Init>,
-    mut filter: madgwick::Filter<f32>,
+    mut filter: madgwick::Madgwick<f64>,
 ) {
+    // let mut x_max = 0.0;
+    // let mut x_min = 0.0;
+    // let mut y_max = 0.0;
+    // let mut y_min = 0.0;
+    // let mut z_max = 0.0;
+    // let mut z_min = 0.0;
+
     loop {
         let data = imu.read_all().await.unwrap();
 
-        let gyroscope = Vector3::new(data.gyr.x, data.gyr.y, data.gyr.z);
+        let mut gyroscope = Vector3::new(data.gyr.x, data.gyr.y, data.gyr.z);
+        gyroscope *= PI / 180.0;
+
         let accelerometer = Vector3::new(data.acc.x, data.acc.y, data.acc.z);
+        // println!(
+        //     "{} {} {}",
+        //     accelerometer.x, accelerometer.y, accelerometer.z
+        // );
+
+        // println!(
+        //     "{} {} {}",
+        //     accelerometer.x, accelerometer.y, accelerometer.z
+        // );
+
+        // println!("{} {}", gyroscope.x, accelerometer.x);
+
         // добавить фильтр шума от магнитного поля моторов
         let magnetometer = Vector3::new(data.mag.x, data.mag.y, data.mag.z);
 
-        let g = gyroscope * (PI / 180.0);
-        let quat = filter.update(&g, &accelerometer, &magnetometer).unwrap();
-        let (roll, pitch, yaw) = quat.euler_angles();
+        let quat = filter
+            .update(&gyroscope, &accelerometer, &magnetometer)
+            .unwrap();
 
-        println!("{} {} {}", pitch, roll, yaw);
+        let (x, y, z, w) = (
+            quat.coords[0],
+            quat.coords[1],
+            quat.coords[2],
+            quat.coords[3],
+        );
+
+        // println!("");
+
+        // quaternion x y z w
+        println!("{} {} {} {}", x, y, z, w);
+
+        // x_max = x_max.max(x);
+        // x_min = x_min.min(x);
+        // y_max = y_max.max(y);
+        // y_min = y_min.min(y);
+        // z_max = z_max.max(z);
+        // z_min = z_min.min(z);
+
+        // println!("x_max: {} x_min: {} diff: {}", x_max, x_min, x_max - x_min);
+        // println!("y_max: {} y_min: {} diff: {}", y_max, y_min, y_max - y_min);
+        // println!("z_max: {} z_min: {} diff: {}", z_max, z_min, z_max - z_min);
     }
 }

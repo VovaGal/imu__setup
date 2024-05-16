@@ -1,0 +1,17 @@
+[package]
+name = "viz"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+regex = "1.8.4"
+
+winit = "0.26"
+wgpu = "0.12"
+bytemuck = { version = "1.13.1", features = ["derive"] }
+nalgebra = "0.31"
+cgmath = "0.18.0"
+
+pollster = "0.3.0"
+env_logger = "0.10.0"

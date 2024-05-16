@@ -15,24 +15,24 @@ const MAGNET_ADDR: u8 = 0x0C;
 #[derive(Clone, Copy)]
 /// Container for accelerometer and gyroscope measurements
 pub struct Data6Dof {
-    pub acc: Vector3<f32>,
-    pub gyr: Vector3<f32>,
-    pub tmp: f32,
+    pub acc: Vector3<f64>,
+    pub gyr: Vector3<f64>,
+    pub tmp: f64,
 }
 
 #[derive(Clone, Copy)]
 /// Container for accelerometer, gyroscope and magnetometer measurements
 pub struct Data9Dof {
-    pub acc: Vector3<f32>,
-    pub gyr: Vector3<f32>,
-    pub mag: Vector3<f32>,
-    pub tmp: f32,
+    pub acc: Vector3<f64>,
+    pub gyr: Vector3<f64>,
+    pub mag: Vector3<f64>,
+    pub tmp: f64,
 }
 
 pub struct MagEnabled {
     is_calibrated: bool,
-    offset: Vector3<f32>,
-    scale: Vector3<f32>,
+    offset: Vector3<f64>,
+    scale: Vector3<f64>,
 }
 
 pub struct MagDisabled;
@@ -459,7 +459,7 @@ where
     E: Into<IcmError<E>>,
 {
     /// Apply the saved calibration offset+scale to measurement vector
-    fn apply_mag_calibration(&self, mag: &mut Vector3<f32>) {
+    fn apply_mag_calibration(&self, mag: &mut Vector3<f64>) {
         if self.mag_state.is_calibrated {
             *mag = mag.zip_zip_map(&self.mag_state.offset, &self.mag_state.scale, |m, o, s| {
                 (m - o) / s
@@ -468,7 +468,7 @@ where
     }
 
     /// Set magnetometer calibration data (offset,scale)
-    pub fn set_mag_calibration(&mut self, offset: [f32; 3], scale: [f32; 3]) {
+    pub fn set_mag_calibration(&mut self, offset: [f64; 3], scale: [f64; 3]) {
         self.mag_state.is_calibrated = true;
         self.mag_state.offset = offset.into();
         self.mag_state.scale = scale.into();
@@ -483,8 +483,8 @@ where
 
     /// Get vector of scaled magnetometer values
     #[allow(clippy::cast_lossless)]
-    pub async fn read_mag(&mut self) -> Result<Vector3<f32>, E> {
-        let mut mag = self.read_mag_unscaled().await?.map(|x| (x as f32)).into();
+    pub async fn read_mag(&mut self) -> Result<Vector3<f64>, E> {
+        let mut mag = self.read_mag_unscaled().await?.map(|x| (x as f64)).into();
         self.apply_mag_calibration(&mut mag);
 
         Ok(mag)
@@ -516,8 +516,8 @@ where
 
     /// Takes 6 bytes converts them into a Vector3 of floats
     #[allow(clippy::cast_lossless)]
-    fn scaled_mag_from_bytes(&self, bytes: [u8; 6]) -> Vector3<f32> {
-        let mut mag = collect_3xi16_mag(bytes).map(|x| (x as f32)).into();
+    fn scaled_mag_from_bytes(&self, bytes: [u8; 6]) -> Vector3<f64> {
+        let mut mag = collect_3xi16_mag(bytes).map(|x| (x as f64)).into();
         self.apply_mag_calibration(&mut mag);
         mag
     }
@@ -549,14 +549,14 @@ where
     E: Into<IcmError<E>>,
 {
     /// Takes 6 bytes converts them into a Vector3 of floats
-    fn scaled_acc_from_bytes(&self, bytes: [u8; 6]) -> Vector3<f32> {
-        let acc = collect_3xi16(bytes).map(|x| f32::from(x) * self.acc_scalar());
+    fn scaled_acc_from_bytes(&self, bytes: [u8; 6]) -> Vector3<f64> {
+        let acc = collect_3xi16(bytes).map(|x| f64::from(x) * self.acc_scalar());
         Vector3::from(acc)
     }
 
     /// Takes 6 bytes converts them into a Vector3 of floats
-    fn scaled_gyr_from_bytes(&self, bytes: [u8; 6]) -> Vector3<f32> {
-        let gyr = collect_3xi16(bytes).map(|x| f32::from(x) * self.gyr_scalar());
+    fn scaled_gyr_from_bytes(&self, bytes: [u8; 6]) -> Vector3<f64> {
+        let gyr = collect_3xi16(bytes).map(|x| f64::from(x) * self.gyr_scalar());
         Vector3::from(gyr)
     }
 
@@ -567,11 +567,11 @@ where
     }
 
     /// Get array of scaled accelerometer values
-    pub async fn read_acc(&mut self) -> Result<Vector3<f32>, E> {
+    pub async fn read_acc(&mut self) -> Result<Vector3<f64>, E> {
         let acc = self
             .read_acc_unscaled()
             .await?
-            .map(|x| f32::from(x) * self.acc_scalar());
+            .map(|x| f64::from(x) * self.acc_scalar());
         Ok(acc)
     }
 
@@ -582,11 +582,11 @@ where
     }
 
     /// Get array of scaled gyroscope values
-    pub async fn read_gyr(&mut self) -> Result<Vector3<f32>, E> {
+    pub async fn read_gyr(&mut self) -> Result<Vector3<f64>, E> {
         let gyr = self
             .read_gyr_unscaled()
             .await?
-            .map(|x| f32::from(x) * self.gyr_scalar());
+            .map(|x| f64::from(x) * self.gyr_scalar());
         Ok(gyr)
     }
 
@@ -631,12 +631,12 @@ where
     }
 
     /// Returns the scalar corresponding to the unit and range configured
-    fn acc_scalar(&self) -> f32 {
+    fn acc_scalar(&self) -> f64 {
         self.config.acc_unit.scalar() / self.config.acc_range.divisor()
     }
 
     /// Returns the scalar corresponding to the unit and range configured
-    fn gyr_scalar(&self) -> f32 {
+    fn gyr_scalar(&self) -> f64 {
         self.config.gyr_unit.scalar() / self.config.gyr_range.divisor()
     }
 }
@@ -698,7 +698,7 @@ pub enum AccelerometerRange {
 
 impl AccelerometerRange {
     #[must_use]
-    pub fn divisor(self) -> f32 {
+    pub fn divisor(self) -> f64 {
         match self {
             Self::Gs2 => 16384.0,
             Self::Gs4 => 8192.0,
@@ -718,7 +718,7 @@ pub enum GyroscopeRange {
 
 impl GyroscopeRange {
     #[must_use]
-    pub fn divisor(self) -> f32 {
+    pub fn divisor(self) -> f64 {
         match self {
             Self::Dps250 => 131.0,
             Self::Dps500 => 65.5,
@@ -738,7 +738,7 @@ pub enum AccelerometerUnit {
 
 impl AccelerometerUnit {
     #[must_use]
-    pub fn scalar(self) -> f32 {
+    pub fn scalar(self) -> f64 {
         match self {
             Self::MpSs => 9.82,
             Self::Gs => 1.0,
@@ -756,7 +756,7 @@ pub enum GyroscopeUnit {
 
 impl GyroscopeUnit {
     #[must_use]
-    pub fn scalar(self) -> f32 {
+    pub fn scalar(self) -> f64 {
         match self {
             Self::Rps => 0.017_453_293,
             Self::Dps => 1.0,
@@ -803,6 +803,6 @@ impl<E> From<E> for IcmError<E> {
 }
 
 /// Takes 2 bytes converts them into a temperature as a float
-fn scaled_tmp_from_bytes(bytes: [u8; 2]) -> f32 {
-    f32::from(i16::from_be_bytes(bytes)) / 333.87 + 21.
+fn scaled_tmp_from_bytes(bytes: [u8; 2]) -> f64 {
+    f64::from(i16::from_be_bytes(bytes)) / 333.87 + 21.
 }
