@@ -7,6 +7,7 @@
 // mod ahrs;
 mod ahrs;
 mod madgwick;
+mod mahony;
 
 use crate::ahrs::Ahrs;
 use core::f64::consts::PI;

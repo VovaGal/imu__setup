@@ -47,8 +47,6 @@ impl<N: SimdRealField + hash::Hash + Copy> hash::Hash for Madgwick<N> {
     }
 }
 
-impl<N: Scalar + Copy + SimdValue> Copy for Madgwick<N> {}
-
 impl<N: Scalar + SimdValue + Copy> Clone for Madgwick<N> {
     #[inline]
     fn clone(&self) -> Self {
@@ -173,17 +171,13 @@ impl<N: RealField + Copy> Ahrs<N> for Madgwick<N> {
         let half: N = nalgebra::convert(0.5);
 
         // Normalize accelerometer measurement
-        let accel = match accelerometer.try_normalize(zero) {
-            Some(n) => n,
-            None => return Err("Accelerometer norm divided by zero."),
+        let Some(accel) = accelerometer.try_normalize(zero) else {
+            return Err("Accelerometer norm divided by zero.");
         };
 
         // Normalize magnetometer measurement
-        let mag = match magnetometer.try_normalize(zero) {
-            Some(n) => n,
-            None => {
-                return Err("Magnetometer norm divided by zero.");
-            }
+        let Some(mag) = magnetometer.try_normalize(zero) else {
+            return Err("Magnetometer norm divided by zero.");
         };
 
         // Reference direction of Earth's magnetic field (Quaternion should still be conj of q)
@@ -236,11 +230,8 @@ impl<N: RealField + Copy> Ahrs<N> for Madgwick<N> {
         let half: N = nalgebra::convert(0.5);
 
         // Normalize accelerometer measurement
-        let accel = match accelerometer.try_normalize(zero) {
-            Some(n) => n,
-            None => {
-                return Err("Accelerator norm divided by zero.");
-            }
+        let Some(accel) = accelerometer.try_normalize(zero) else {
+            return Err("Accelerator norm divided by zero.");
         };
 
         // Gradient descent algorithm corrective step
