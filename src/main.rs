@@ -52,6 +52,7 @@ async fn main(spawner: Spawner) {
     let mut imu = imu.initialize_9dof().await.unwrap();
     imu.set_gyr_odr(0).await.unwrap();
     imu.set_acc_odr(0).await.unwrap();
+    // imu.set_mag_calibration(offset, scale);
     // imu.gyr_calibrate(100).await.unwrap();
     // imu.set_acc_dlp(dr_icm_20948::AccelerometerDlp::Hz6)
     //     .await
