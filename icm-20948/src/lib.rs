@@ -605,8 +605,8 @@ where
             .await
     }
 
-    /// Set gyroscope calibration offsets by writing them to the IMU
-    async fn set_gyr_offsets(&mut self, offsets: Vector3<i16>) -> Result<(), E> {
+    /// Set gyroscope calibration offsets by writing them to the IMU !!set bounce limits
+    pub async fn set_gyr_offsets(&mut self, offsets: Vector3<i16>) -> Result<(), E> {
         let [[xh, xl], [yh, yl], [zh, zl]]: [[u8; 2]; 3] =
             offsets.map(|x| (-x).to_be_bytes()).into();
 

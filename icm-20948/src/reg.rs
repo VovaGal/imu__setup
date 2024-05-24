@@ -74,8 +74,8 @@ pub enum Bank1 {
 #[derive(PartialEq, Copy, Clone)]
 pub enum Bank2 {
     GyroSmplrtDiv = 0x00,
-    GyroConfig1 = 0x01,
-    GyroConfig2 = 0x02,
+    GyroConfig1 = 0x02, //0 is  250lbs, 1-500, 2-1000, 3-2000
+    GyroConfig2 = 0x01,
     XgOffsUsrh = 0x03,
     YgOffsUsrh = 0x05,
     ZgOffsUsrh = 0x07,

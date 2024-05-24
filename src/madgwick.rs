@@ -184,6 +184,7 @@ impl<N: RealField + Copy> Ahrs<N> for Madgwick<N> {
         let h = q * (Quaternion::from_parts(zero, mag) * q.conjugate());
         let b = Quaternion::new(zero, Vector2::new(h[0], h[1]).norm(), zero, h[2]);
 
+        // correction sensitiiviity here
         // Gradient descent algorithm corrective step
         #[rustfmt::skip]
         let F = Vector6::new(
